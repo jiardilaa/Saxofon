@@ -361,7 +361,7 @@ const SONGS=[
 {n:"🎵 Estrellita (Brilla, brilla)",i:"Principiante. Solo 6 notas (Sol4 a Mi5): ideal para limpiar saltos de quinta.",notes:SD(67,"0 0 4 4 5 5 4:2 3 3 2 2 1 1 0:2 4 4 3 3 2 2 1:2 4 4 3 3 2 2 1:2 0 0 4 4 5 5 4:2 3 3 2 2 1 1 0:2")},
 {n:"🎵 Mary tenía un corderito",i:"Principiante. Solo 5 notas (Sol4 a Re5); la usan quenistas de quena en Sol para sus primeras melodías.",notes:SD(67,"2 1 0 1 2 2 2:2 1 1 1:2 2 4 4:2 2 1 0 1 2 2 2 2 1 1 2 1 0:4")}
 ];
-SONGS.forEach(x=>Object.assign(x,{native:true,bpm:70,bar:x.bar||4,pick:x.pick||0}));
+SONGS.forEach(x=>Object.assign(x,{native:true,bpm:x.bpm||70,bar:x.bar||4,pick:x.pick||0}));   // cada canción puede traer su propio bpm, bar (compás) y pick (anacrusa)
 async function openList(note){
  const L=(await all()).filter(x=>x.notes),b=$("ovb");b.innerHTML="";
  const head=t=>{const h=document.createElement("div");h.className="lbl";h.style.margin="12px 0 2px";h.textContent=t;b.append(h)};

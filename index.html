@@ -46,6 +46,8 @@ button,input,select{font:inherit;color:var(--tx);background:#222a35;border:1px s
 #ov .box{max-width:480px;margin:0 auto;background:var(--sf);border-radius:14px;padding:12px}
 .it{display:flex;gap:6px;align-items:center;margin:8px 0}.it b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.it button{padding:6px 10px;min-height:40px}
 button:disabled{opacity:.35}
+#fab{position:absolute;top:8px;right:8px;z-index:4;min-height:46px;padding:8px 16px;border-radius:23px;border:0;font-weight:700;font-size:15px;box-shadow:0 2px 12px rgba(0,0,0,.55)}
+#fab.fab-listen{background:var(--pu);color:#fff}#fab.fab-play{background:var(--ac);color:#000}
 </style>
 </head>
 <body>
@@ -57,6 +59,7 @@ button:disabled{opacity:.35}
  <div id="stage">
   <div id="fing"><svg viewBox="0 0 100 300" id="quena" aria-label="Digitación de la quena"></svg></div>
   <div id="view">
+   <button id="fab" hidden></button>
    <div id="trkw"><canvas id="trk" aria-label="Pista de notas"></canvas></div>
    <section id="top" hidden><svg viewBox="0 -10 300 130" id="staff" aria-label="Pentagrama"></svg></section>
   </div>
@@ -106,7 +109,8 @@ const FING={
  89:[0,0.5,0,0,0,0,0], // Fa6
  90:[0,0,0,0,0,0,0],   // Fa♯6
 
- // --- TERCERA OCTAVA ---
+ // --- TERCERA OCTAVA ---  ⚠ fuera del rango: el detector llega a 1900 Hz y los ejercicios a La6 (HI=93), así que 94–102 no se detectan.
+ //     Se conservan como referencia. Por validar: 78 y 100 repiten digitación; 90 y 102 son «todo abierto».
  91:[1,0,1,1,1,1,1],   // Sol6
  92:[1,0,1,1,1,1,0.5], // Sol♯6
  93:[1,0,1,1,1,1,0],   // La6
@@ -125,11 +129,18 @@ function fingerFor(m){
  if(FING[m])return{f:FING[m],note:""};
  return{f:null,note:"Sin digitación en tabla"};
 }
-
 const NS="http://www.w3.org/2000/svg",$=id=>document.getElementById(id);
 const el=(p,t,a,txt)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;p.appendChild(e);return e};
 const NAMES=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"],SOL=["Do","Do♯","Re","Re♯","Mi","Fa","Fa♯","Sol","Sol♯","La","La♯","Si"];
 const LET=[0,0,1,1,2,3,3,4,4,5,5,6],ACC=[0,1,0,1,0,0,1,0,1,0,1,0];
+// ---- Ajustes persistentes (localStorage con protección: en modo privado puede no estar disponible)
+const store={get(){try{return JSON.parse(localStorage.getItem("quenalab.set")||"{}")}catch(e){return{}}},put(o){try{localStorage.setItem("quenalab.set",JSON.stringify(o))}catch(e){}}};
+const txt=(e,t)=>{if(e._t!==t){e._t=t;e.textContent=t}};       // escribe en el DOM solo si el texto cambió
+["ref","sens","bpm","tr","rig","clk"].forEach(id=>{
+ const e=$(id),chk=e.type==="checkbox",sv=store.get();
+ if(id in sv){if(chk)e.checked=!!sv[id];else e.value=sv[id]}
+ e.addEventListener("change",()=>store.put({...store.get(),[id]:chk?e.checked:e.value}));
+});
 // ---- Quena SVG: cuerpo de madera con anillos crema; negro = tapado, blanco = abierto
 const q=$("quena"),defs=el(q,"defs",{}),wg=el(defs,"linearGradient",{id:"wood",x1:0,x2:1,y1:0,y2:0});
 [["0","#B06A33"],[".45","#E3A56E"],["1","#9E5C2B"]].forEach(([o,c])=>el(wg,"stop",{offset:o,"stop-color":c}));
@@ -154,7 +165,6 @@ const st=$("staff");
 for(let i=0;i<5;i++)el(st,"line",{x1:50,x2:290,y1:50+i*10,y2:50+i*10,stroke:"#A9B4C2","stroke-width":1.2});
 el(st,"text",{x:8,y:100,"font-size":66,fill:"#F5F7FA","font-family":"'Noto Music','Segoe UI Symbol','Apple Symbols',serif"},"𝄞");
 const ng=el(st,"g",{});
-function drawStaff(){}
 let evs=[],practice=null;
 const DUR=[[4,"w"],[2,"h"],[1,"q"],[.5,"e"],[.25,"s"]];
 const kind=b=>{let k="q",bd=1e9;for(const d of DUR){const e=Math.abs(Math.log(Math.max(b,.05)/d[0]));if(e<bd){bd=e;k=d[1]}}return k};
@@ -176,12 +186,13 @@ function drawRoll(now){
  for(const e of evs){const x=X(e.t0);if(x<48)continue;glyph(ng,x,e.m,kind(((e.done?e.t1:now)-e.t0)/1000/bs),e.done?"#F5F7FA":"#FFC83D")}
 }
 function octInfo(){
- const o=m=>Math.floor(m/12)-1,nm=m=>SOL[((m%12)+12)%12]+o(m),b=$("oct");
- if(practice){const e=expM();
-  if(e==null){b.textContent="🎯 ¡Ejercicio completado!";b.style.color="var(--ok)";return}
-  b.textContent=`🎯 Toca en la OCTAVA ${o(e)} · ${nm(e)}`+(hasNote?`  |  escuchas: octava ${o(lastShown)}`:"");
-  b.style.color=hasNote&&lastShown===e?"var(--ok)":"var(--ac)";return}
- b.style.color="var(--ac)";b.textContent=hasNote?`Octava ${o(lastShown)} · ${nm(lastShown)}`:"Octava: toca una nota";
+ const o=m=>Math.floor(m/12)-1,nm=m=>SOL[((m%12)+12)%12]+o(m),b=$("oct"),p=practice,e=p?expM():null;
+ if(p&&p.mode==="demo"){b.style.color="var(--pk)";txt(b,e==null?"🎧 Escuchando la melodía…":`🎧 Escucha: octava ${o(e)} · ${nm(e)}`);return}
+ if(p){
+  if(e==null){b.style.color="var(--ok)";txt(b,"🎯 ¡Ejercicio completado!");return}
+  b.style.color=hasNote&&lastShown===e?"var(--ok)":"var(--ac)";
+  txt(b,`🎯 ${p.mode==="ready"?"Empieza en":"Toca en"} la OCTAVA ${o(e)} · ${nm(e)}`+(hasNote?`  |  escuchas: octava ${o(lastShown)}`:""));return}
+ b.style.color="var(--ac)";txt(b,hasNote?`Octava ${o(lastShown)} · ${nm(lastShown)}`:"Octava: toca una nota");
 }
 function drawPractice(){
  const p=practice,s0=Math.floor(Math.min(p.idx,p.notes.length-1)/8)*8,tr=+$("tr").value||0;
@@ -205,7 +216,8 @@ function laneSet(){                                                   // carrile
  return L.slice(s,s+12);
 }
 function beatPos(now){                                                // posición actual en pulsos
- const p=practice;if(p.timed)return(now-p.T0)/p.bms;                  // con ritmo: avanza con el reloj
+ const p=practice;if(p.mode==="demo")return p.demoBeat;               // demostración: sigue el reloj del audio
+ if(p.timed)return(now-p.T0)/p.bms;                  // con ritmo: avanza con el reloj
  const last=p.notes.length-1,t=p.idx<p.notes.length?p.cum[p.idx]:p.cum[last]+p.notes[last].d;
  p.bp=p.bp==null?t:p.bp+(t-p.bp)*.18;return p.bp;                     // en espera: desliza hasta la nota actual
 }
@@ -243,7 +255,7 @@ function drawTrack(now){
   g2.globalAlpha=.9*(1-a0/TRAIL);g2.strokeStyle=e.done?`hsl(${hue(e.m)},80%,62%)`:"#FF2E93";g2.lineWidth=R((sA+sB)/2)*1.5;
   g2.beginPath();g2.moveTo(X(i,sA),yA);g2.lineTo(X(i,sB),yB);g2.stroke();g2.globalAlpha=1;
  }
- const heard=hasNote?lastShown:null,want=p?expM():null;               // fila de botones
+ const heard=p&&p.mode==="demo"?p.demoNote:(hasNote?lastShown:null),want=p?expM():null;               // fila de botones
  L.forEach((m,i)=>{
   const x=X(i,1),r=Math.min(LW*.42,22),on=heard===m;
   if(on){const gl=g2.createRadialGradient(x,HY,r*.3,x,HY,r*2.4);gl.addColorStop(0,"rgba(255,46,147,.95)");gl.addColorStop(1,"rgba(255,46,147,0)");
@@ -286,7 +298,7 @@ $("vw").onclick=()=>{const s=!staffOn();$("top").hidden=!s;$("trkw").hidden=s;$(
 // ---- Partituras (IndexedDB)
 const DB=new Promise((ok,ko)=>{const r=indexedDB.open("quenalab",1);r.onupgradeneeded=()=>r.result.createObjectStore("s",{keyPath:"id"});r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error)});
 const tx=async(mode,f)=>{const db=await DB;return new Promise((ok,ko)=>{const t=db.transaction("s",mode),r=f(t.objectStore("s"));t.oncomplete=()=>ok(r.result);t.onerror=()=>ko(t.error)})};
-const all=()=>tx("readonly",s=>s.getAll()),put=o=>tx("readwrite",s=>s.put(o)),del=id=>tx("readwrite",s=>s.delete(id));
+const all=()=>tx("readonly",s=>s.getAll()).catch(()=>[]),put=o=>tx("readwrite",s=>s.put(o)),del=id=>tx("readwrite",s=>s.delete(id));
 async function mxlToXml(f){
  const u=new Uint8Array(await f.arrayBuffer()),dv=new DataView(u.buffer),td=new TextDecoder();
  let e=u.length-22;while(e>=0&&dv.getUint32(e,true)!==0x06054b50)e--;
@@ -363,35 +375,76 @@ function build(x,pc,sn,oct){
  const notes=x.plan(sc.length).map(([d,t])=>({m:f(d),d:t})),ms=notes.map(n=>n.m);
  return{notes,ok:Math.min(...ms)>=LO&&Math.max(...ms)<=HI,lo:Math.min(...ms),hi:Math.max(...ms)};
 }
-let CFG={pc:7,sn:"Mayor",oct:4};                          // última elección (por defecto: Sol mayor)
+// ---- Escuchar la melodía (síntesis con Web Audio: seno + 2.º armónico, timbre suave de flauta)
+let previewing=false,pv=null;                         // previewing=true → el detector ignora el micrófono (evita oír el altavoz)
+const stopPreview=(ok=false)=>{if(pv)pv.stop(ok)};
+/** Reproduce las notas con su ritmo (o `hold` ms por nota) y avisa en cada cuadro: onFrame(nota, avance 0-1, índice, pulso).
+ *  lead = segundos antes de la primera nota (la pista muestra las burbujas acercándose). Resuelve true si terminó, false si se interrumpió. */
+async function playMelody(notes,{bpm,hold,tr=0,lead=.15,onFrame}){
+ stopPreview();
+ const ac=new (window.AudioContext||window.webkitAudioContext)();await ac.resume();
+ const bms=hold?hold/notes[0].d:60000/bpm,f0=fref(),t0=ac.currentTime+lead,seg=[];let t=t0;   // bms: ms por pulso (con hold cada nota dura hold ms)
+ notes.forEach((n,k)=>{
+  const d=(hold||n.d*bms)/1000;
+  if(n.m!=null){
+   const f=f0*Math.pow(2,(n.m+tr-69)/12),gap=Math.min(.06,d*.1),att=Math.min(.05,d*.2),rel=Math.min(.08,d*.25);   // gap: separa notas repetidas
+   const g=ac.createGain(),h=ac.createGain(),a=ac.createOscillator(),b=ac.createOscillator();
+   a.frequency.value=f;b.frequency.value=2*f;h.gain.value=.22;                                                      // 2.º armónico más suave
+   g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.3,t+att);g.gain.setValueAtTime(.3,t+d-gap-rel);g.gain.linearRampToValueAtTime(0,t+d-gap);
+   a.connect(g);b.connect(h);h.connect(g);g.connect(ac.destination);
+   a.start(t);b.start(t);a.stop(t+d);b.stop(t+d);
+   seg.push({s:t-t0,e:t-t0+d,m:n.m+tr,k});
+  }
+  t+=d;
+ });
+ const total=t-t0;previewing=true;
+ return new Promise(resolve=>{
+  let raf=0,lastK=0;
+  const end=ok=>{if(pv!==me)return;pv=null;cancelAnimationFrame(raf);try{ac.close()}catch(e){}
+   setTimeout(()=>{if(!pv)previewing=false},400);if(onFrame)onFrame(null,1,lastK,total*1000/bms);resolve(ok)};   // 400 ms de cola antes de volver a escuchar
+  const me=pv={stop:end};
+  const step=()=>{const el=ac.currentTime-t0,c=seg.find(x=>el>=x.s&&el<x.e);if(c)lastK=c.k;
+   if(onFrame)onFrame(c?c.m:null,Math.min(1,Math.max(0,el/total)),lastK,el*1000/bms);
+   if(el>=total+.15)end(true);else raf=requestAnimationFrame(step)};
+  step();
+ });
+}
+// ---- Panel de carga: elige nota/escala/tempo; la práctica queda lista y el botón único decide escuchar o practicar
+let CFG={pc:7,sn:"Mayor",oct:4,...(store.get().cfg||{})};     // última elección (por defecto: Sol mayor)
 function cfgPractice(x){
- const b=$("ovb");b.innerHTML="";
- const t=document.createElement("b");t.textContent=x.n;b.append(t);
- const d=document.createElement("div");d.className="lbl";d.textContent=x.i;b.append(d);
+ stopPreview();
+ const isEx=!!x.plan,b=$("ovb");b.innerHTML="";
+ const t=document.createElement("b");t.textContent=x.n||x.name;b.append(t);
+ if(x.i){const d=document.createElement("div");d.className="lbl";d.textContent=x.i;b.append(d)}
  const field=(lab,c)=>{const l=document.createElement("label");l.className="cf";l.append(lab,c);b.append(l);return c};
  const sel=(opts,v)=>{const c=document.createElement("select");opts.forEach(([k,tx])=>c.add(new Option(tx,k)));c.value=v;return c};
- const root=field("Nota (tónica): ",sel(ROOTS.map((r,i)=>[i,r]),CFG.pc));
- const scale=field("Escala: ",sel(Object.keys(SCALES).map(k=>[k,k]),CFG.sn));
+ const btn=tx=>{const e=document.createElement("button");e.textContent=tx;e.style.margin="10px 8px 0 0";return e};
+ const root=isEx?field("Nota (tónica): ",sel(ROOTS.map((r,i)=>[i,r]),CFG.pc)):null;
+ const scale=isEx?field("Escala: ",sel(Object.keys(SCALES).map(k=>[k,k]),CFG.sn)):null;
  const octs=x.oct?field("Octava de la tónica: ",sel([],"")):null;
- const tempo=x.hold?null:field("Tempo (♩=): ",Object.assign(document.createElement("input"),{type:"number",min:30,max:160,value:x.bpm||60}));
- const info=document.createElement("div"),go=document.createElement("button"),back=document.createElement("button");
- info.className="lbl";go.textContent="▶ Empezar";go.style.margin="10px 8px 0 0";back.textContent="Atrás";back.onclick=()=>openList();
- b.append(info,go,back);
+ const tempo=x.hold?null:field("Tempo (♩=): ",Object.assign(document.createElement("input"),{type:"number",min:30,max:160,value:x.bpm||80}));
+ const info=document.createElement("div"),go=btn("✔ Cargar práctica"),back=btn("Atrás");
+ info.className="lbl";back.onclick=()=>openList();b.append(info,go,back);
  let cur=null;
  const upd=()=>{
-  const pc=+root.value,sn=scale.value;
-  if(octs){const ok=[4,5,6].filter(o=>build(x,pc,sn,o).ok),keep=octs.value;octs.innerHTML="";ok.forEach(o=>octs.add(new Option(o,o)));if(ok.map(String).includes(keep))octs.value=keep;else if(ok.includes(CFG.oct))octs.value=CFG.oct}
-  const oc=octs?(octs.value===""?undefined:+octs.value):null;
-  cur=oc===undefined?{ok:false}:build(x,pc,sn,oc);
+  if(isEx){
+   const pc=+root.value,sn=scale.value;
+   if(octs){const ok=[4,5,6].filter(o=>build(x,pc,sn,o).ok),keep=octs.value;octs.innerHTML="";ok.forEach(o=>octs.add(new Option(o,o)));if(ok.map(String).includes(keep))octs.value=keep;else if(ok.includes(CFG.oct))octs.value=CFG.oct}
+   const oc=octs?(octs.value===""?undefined:+octs.value):null;
+   cur=oc===undefined?{ok:false}:build(x,pc,sn,oc);
+  }else{const ms=x.notes.filter(n=>n.m!=null).map(n=>n.m);cur={notes:x.notes,ok:true,lo:Math.min(...ms),hi:Math.max(...ms)}}
   go.disabled=!cur.ok;
-  info.textContent=cur.ok?`Notas de ${nmS(cur.lo)} a ${nmS(cur.hi)}.`:"Esa combinación sale del rango de la quena (Sol4–La6). Elige otra nota u octava.";
+  info.textContent=cur.ok?`Notas de ${nmS(cur.lo)} a ${nmS(cur.hi)}. Después usa el botón «Escuchar / Practicar» sobre la pista.`:"Esa combinación sale del rango de la quena (Sol4–La6). Elige otra nota u octava.";
   info.style.color=cur.ok?"":"var(--bad)";
  };
  [root,scale,octs].forEach(c=>c&&c.addEventListener("change",upd));upd();
- go.onclick=()=>{CFG={pc:+root.value,sn:scale.value,oct:octs?+octs.value:CFG.oct};
-  startPractice({name:`${x.n} · ${ROOTS[CFG.pc]} ${CFG.sn}`,notes:cur.notes,hold:x.hold,stac:x.stac,native:true,bar:4,pick:0,bpm:tempo?+tempo.value:x.bpm})};
+ go.onclick=()=>{
+  if(isEx){CFG={...CFG,pc:+root.value,sn:scale.value,oct:octs?+octs.value:CFG.oct};store.put({...store.get(),cfg:CFG})}
+  loadPractice(isEx?{name:`${x.n} · ${ROOTS[CFG.pc]} ${CFG.sn}`,notes:cur.notes,hold:x.hold,stac:x.stac,native:true,bar:4,pick:0,bpm:tempo?+tempo.value:x.bpm}
+   :x.native?{...x,bpm:+tempo.value||x.bpm}:{name:x.name,notes:x.notes,bpm:+tempo.value||80});
+ };
 }
-// Feliz cumpleaños (3/4) en tonalidad de Sol, empieza en Re5
+// Feliz cumpleaños (3/4) en tonalidad de Sol, empieza en Re5: todas las notas tienen digitación en la tabla
 const HB=[[74,.75],[74,.25],[76,1],[74,1],[79,1],[78,3],[74,.75],[74,.25],[76,1],[74,1],[81,1],[79,3],[74,.75],[74,.25],[86,1],[83,1],[79,1],[78,1],[76,1],[84,.75],[84,.25],[83,1],[79,1],[81,1],[79,3]].map(([m,d])=>({m,d}));
 const SD=(t,str)=>str.split(" ").map(x=>{const[a,b]=x.split(":"),d=+a;return{m:t+12*Math.floor(d/7)+IV[((d%7)+7)%7],d:b?+b:1}});
 const SONGS=[
@@ -400,22 +453,23 @@ const SONGS=[
 {n:"🎵 Estrellita (Brilla, brilla)",i:"Principiante. Solo 6 notas (Sol4 a Mi5): ideal para limpiar saltos de quinta.",notes:SD(67,"0 0 4 4 5 5 4:2 3 3 2 2 1 1 0:2 4 4 3 3 2 2 1:2 4 4 3 3 2 2 1:2 0 0 4 4 5 5 4:2 3 3 2 2 1 1 0:2")},
 {n:"🎵 Mary tenía un corderito",i:"Principiante. Solo 5 notas (Sol4 a Re5); la usan quenistas de quena en Sol para sus primeras melodías.",notes:SD(67,"2 1 0 1 2 2 2:2 1 1 1:2 2 4 4:2 2 1 0 1 2 2 2 2 1 1 2 1 0:4")}
 ];
-SONGS.forEach(x=>Object.assign(x,{native:true,bpm:x.bpm||70,bar:x.bar||4,pick:x.pick||0}));
+SONGS.forEach(x=>Object.assign(x,{native:true,bpm:x.bpm||70,bar:x.bar||4,pick:x.pick||0}));   // cada canción puede traer su propio bpm, bar (compás) y pick (anacrusa)
 async function openList(note){
+ stopPreview();
  const L=(await all()).filter(x=>x.notes),b=$("ovb");b.innerHTML="";
  const head=t=>{const h=document.createElement("div");h.className="lbl";h.style.margin="12px 0 2px";h.textContent=t;b.append(h)};
  const row=(x,rm)=>{
   const d=document.createElement("div");d.className="it";const w=document.createElement("div");w.style.flex=1;
   const nm=document.createElement("b");nm.textContent=x.n||x.name;nm.style.display="block";w.append(nm);
   if(x.i){const t=document.createElement("div");t.className="lbl";t.style.fontSize="12px";t.textContent=x.i;w.append(t)}
-  d.append(w);const g=document.createElement("button");g.textContent="🎯";g.onclick=()=>x.plan?cfgPractice(x):startPractice(x.native?x:{name:x.name,notes:x.notes});d.append(g);
-  if(rm){const r=document.createElement("button");r.textContent="🗑";r.onclick=async()=>{await del(x.id);openList()};d.append(r)}
+  d.append(w);const g=document.createElement("button");g.textContent="🎯";g.onclick=()=>cfgPractice(x);d.append(g);
+  if(rm){const r=document.createElement("button");r.textContent="🗑";r.onclick=async()=>{try{await del(x.id)}catch(e){}openList()};d.append(r)}
   b.append(d)};
  if(note){const h=document.createElement("div");h.style.color="var(--bad)";h.textContent=note;b.append(h)}
  head("CANCIONES");SONGS.forEach(x=>row(x));
- head("EJERCICIOS (elige nota y escala al empezar)");EX.forEach(x=>row(x));
+ head("EJERCICIOS (elige nota y escala al cargar)");EX.forEach(x=>row(x));
  head("MIS PARTITURAS (.xml / .musicxml)");if(!L.length)b.append(document.createTextNode("Aún no has adjuntado ninguna."));L.forEach(x=>row(x,true));
- const c=document.createElement("button");c.textContent="Cerrar";c.onclick=()=>$("ov").style.display="none";c.style.marginTop="10px";b.append(c);$("ov").style.display="block";
+ const c=document.createElement("button");c.textContent="Cerrar";c.onclick=()=>{stopPreview();$("ov").style.display="none"};c.style.marginTop="10px";b.append(c);$("ov").style.display="block";
 }
 let mi=null;
 $("met").onclick=()=>{if(mi){clearInterval(mi);mi=null;$("met").style.background="";return}
@@ -424,26 +478,61 @@ $("bpm").onchange=()=>{if(mi){$("met").onclick();$("met").onclick()}};
 // ---- Práctica
 const expM=()=>{const p=practice;return p&&p.idx<p.notes.length?p.notes[p.idx].m+(+$("tr").value||0):null};
 function skipRests(){const p=practice;while(p.idx<p.notes.length&&p.notes[p.idx].m==null){p.st[p.idx]="r";p.idx++}}
+/** Crea el estado de una práctica. mode: "ready" (cargada), "demo" (escuchando) o "play" (practicando). */
+function newPractice(sc,att=1){
+ const p={name:sc.name||sc.n,src:sc,att,hold:sc.hold,native:!!sc.native,timed:false,mode:"ready",notes:sc.notes,idx:0,st:[],wrong:0,cents:[],okAt:0,cs:[],
+  wf:false,rel:false,acc:null,bad:null,streak:0,nb:{},err:{},h:[],lv:[],dead:false,done:false,k:-1,stac:!!sc.stac,bar:sc.bar||4,pick:sc.pick||0};
+ let c=0;p.cum=sc.notes.map(n=>{const b=c;c+=n.d;return b});
+ while(p.idx<p.notes.length&&p.notes[p.idx].m==null){p.st[p.idx]="r";p.idx++}           // salta silencios iniciales
+ return p;
+}
+/** Carga una práctica sin arrancarla: se ve en la pista y el pentagrama; el botón único ofrece «Escuchar». */
+function loadPractice(sc){
+ stopPreview();if(mi)$("met").onclick();
+ if(sc.bpm)$("bpm").value=sc.bpm;
+ practice=newPractice(sc);modeLast="none";$("ov").style.display="none";$("prc").textContent="⏹ Salir práctica";
+ setFinger(expM());pinfo();fb("");fabUpdate();ui(run?"listen":"idle","Carga lista: pulsa «Escuchar» para oír y ver la melodía");redraw();
+}
 async function startPractice(sc,att=1){
- $("ov").style.display="none";
+ stopPreview();$("ov").style.display="none";
  if(!run)await start();if(!run)return;
  if(mi)$("met").onclick();
  if(sc.bpm)$("bpm").value=sc.bpm;
- const native=!!sc.native,timed=native&&!sc.hold;
- const p=practice={name:sc.name||sc.n,src:sc,att,hold:sc.hold,native,timed,notes:sc.notes,idx:0,st:[],wrong:0,cents:[],okAt:0,cs:[],
-  wf:false,rel:false,acc:null,bad:null,streak:0,nb:{},err:{},h:[],lv:[],dead:false,done:false,k:-1,stac:!!sc.stac,bar:sc.bar||4,pick:sc.pick||0};
- let c=0;p.cum=sc.notes.map(n=>{const b=c;c+=n.d;return b});
- if(timed){
+ const p=practice=newPractice(sc,att);p.mode="play";p.timed=p.native&&!sc.hold;modeLast="play";
+ if(p.timed){
   const bms=60000/(+$("bpm").value||80);
   p.f=+$("rig").value||1;p.bms=bms;p.tol=p.f*Math.min(250,Math.max(100,.25*bms));
   p.t0=Math.max(performance.now(),calT0+1100)+300;p.T0=p.t0+p.bar*bms;
   p.E=p.cum.map(b=>p.T0+b*bms);
  }
- $("prc").textContent="⏹ Salir práctica";skipRests();setFinger(expM());pinfo();fb("");
+ $("prc").textContent="⏹ Salir práctica";setFinger(expM());pinfo();fb("");fabUpdate();
 }
-function exitPractice(){const t=$("cifra").textContent;practice=null;fb("");$("prc").textContent="🎯 Práctica";clearNote();if(run)ui("listen","Toca una nota");$("cifra").textContent=t.startsWith("✔")?t:"—"}
+function exitPractice(){
+ stopPreview();const t=$("cifra").textContent;practice=null;modeLast="none";fb("");$("prc").textContent="🎯 Práctica";fabUpdate();
+ clearNote();ui(run?"listen":"idle",run?"Toca una nota":"Listo");$("cifra").textContent=t.startsWith("✔")?t:"—";redraw();
+}
+// ---- Escuchar la melodía viéndola: suena y se muestra en la pista, el pentagrama, la quena y el panel de notas
+let modeLast="none";                                  // último modo activo; el botón único ofrece siempre el contrario
+async function startDemo(){
+ const src=practice.src;if(mi)$("met").onclick();
+ const p=practice=newPractice(src);p.mode="demo";p.demoBeat=-2;p.demoNote=null;modeLast="demo";
+ fabUpdate();pinfo();fb("");ui(run?"listen":"idle","🎧 Escuchando la melodía…");setFinger(expM());
+ const bpm=+$("bpm").value||80,ok=await playMelody(p.notes,{bpm,hold:src.hold,tr:+$("tr").value||0,lead:src.hold?1.5:Math.min(120/bpm,2.5),
+  onFrame:(m,pr,k,beat)=>{p.demoNote=m;p.demoBeat=beat;if(p.idx!==k){p.idx=k;setFinger(expM())}if(!run)redraw()}});
+ if(practice===p){practice=newPractice(src);setFinger(expM());pinfo();fabUpdate();ui(run?"listen":"idle",ok?"Listo: pulsa «Practicar» para ejercitarla":"");redraw()}
+}
+function fabUpdate(){
+ const b=$("fab");b.hidden=!practice;if(!practice)return;
+ const next=modeLast==="demo"?"play":"demo";
+ b.textContent=next==="demo"?"🎧 Escuchar":"🎯 Practicar";b.className=next==="demo"?"fab-listen":"fab-play";
+ b.setAttribute("aria-label",next==="demo"?"Escuchar la melodía":"Practicar el ejercicio");
+}
+$("fab").onclick=()=>{if(!practice)return;if(modeLast==="demo")startPractice(practice.src);else startDemo()};
 function pinfo(){
- const p=practice,done=p.st.filter(x=>x==="ok"||x==="w").length,tot=p.notes.filter(n=>n.m!=null).length;
+ const p=practice;
+ if(p.mode==="demo"){$("cifra").textContent=`🎧 ${p.name} · escuchando`;return}
+ if(p.mode==="ready"){$("cifra").textContent=`${p.name} · lista`;return}
+ const done=p.st.filter(x=>x==="ok"||x==="w").length,tot=p.notes.filter(n=>n.m!=null).length;
  if(p.idx>=p.notes.length){const ok=p.st.filter(x=>x==="ok").length,dev=p.cents.length?p.cents.reduce((a,b)=>a+b,0)/p.cents.length:0;
   $("cifra").textContent=`✔ Fin · ${Math.round(100*ok/Math.max(1,tot))}% al primer intento · desv. ${dev.toFixed(0)}¢`;return}
  $("cifra").textContent=`${p.name} · ${done}/${tot} · errores ${p.wrong}`+(p.att>1?` · intento ${p.att}`:"")+(p.native&&p.streak?` · ⚠ ${p.streak}/2 seguidos`:"")+(p.hold>180&&p.okAt?` · ${((performance.now()-p.okAt)/1000).toFixed(1)}/${p.hold/1000}s`:"");
@@ -492,11 +581,11 @@ function endNote(ev){ev.done=true;if(practice&&practice.timed)evalEnd(ev)}
 /** Inicio de una nota en práctica con tempo: compara con el instante esperado y con el historial de notas. */
 function onsetNote(ev,c){
  const p=practice;if(p.dead||p.idx>=p.notes.length)return;
- const i=p.idx,o=ev.t0-p.E[i];
- if(o<-2*p.tol)return;
+ const i=p.idx,o=ev.t0-p.E[i];                       // o>0: tarde · o<0: temprano (ms)
+ if(o<-2*p.tol)return;                                // demasiado pronto para ser esta nota
  if(ev.m!==expM()){addErr(p,i,"nota","Nota equivocada: tocaste "+nmS(ev.m));advance(p,i);return}
  ev.i=i;p.cents.push(Math.abs(c));
- if(Math.abs(o)<=p.tol){p.h.push({E:p.E[i],t:ev.t0});if(p.h.length>5)p.h.shift()}
+ if(Math.abs(o)<=p.tol){p.h.push({E:p.E[i],t:ev.t0});if(p.h.length>5)p.h.shift()}   // un ataque muy fuera de tiempo no contamina el análisis de pulso/tempo
  for(const [k,msg] of rhythmAtOnset(p,o))addErr(p,i,k,msg);
  if(!p.nb[i])p.st[i]="ok";
  advance(p,i);
@@ -509,7 +598,7 @@ function rhythmAtOnset(p,o){
   if(l.every(v=>v>.6*p.tol))r.push(["sync","Desincronizado: vas atrasado respecto al metrónomo"]);
   else if(l.every(v=>v<-.6*p.tol))r.push(["sync","Desincronizado: vas adelantado respecto al metrónomo"])}
  if(h.length>=4){const a=h[0],z=h[h.length-1],es=z.E-a.E;
-  if(es>=2*p.bms){const q=(z.t-a.t)/es;
+  if(es>=2*p.bms){const q=(z.t-a.t)/es;                 // q>1: más lento que el tempo
    if(q>1+.15*f)r.push(["tempo","Problema de tempo: te ralentizas"]);
    else if(q<1-.13*f)r.push(["tempo","Problema de tempo: te aceleras"])}
   const e=[];for(let k=1;k<h.length;k++){const x=h[k].E-h[k-1].E;e.push(((h[k].t-h[k-1].t)-x)/x)}
@@ -523,10 +612,10 @@ function evalEnd(ev){
  const n=p.notes[ev.i],q=(ev.t1-ev.t0)/(n.d*p.bms),f=p.f,lo=p.stac?.25:1-.4*f,hi=1+.5*f;
  if(q<lo)addErr(p,ev.i,"duracion","Imprecisión de duración: soltaste la nota demasiado pronto");
  else if(q>hi)addErr(p,ev.i,"duracion","Imprecisión de duración: la sostuviste de más");
- const x=(p.cum[ev.i]+p.bar-p.pick)%p.bar,strong=x<1e-6||p.bar-x<1e-6;
+ const x=(p.cum[ev.i]+p.bar-p.pick)%p.bar,strong=x<1e-6||p.bar-x<1e-6;     // ¿tiempo fuerte del compás?
  if(p.lv.length>=3&&!strong&&ev.pk>=p.lv.reduce((s,v)=>s+v,0)/p.lv.length+5*f)addErr(p,ev.i,"acento","Acento desplazado: marcaste un tiempo débil");
  p.lv.push(ev.pk);if(p.lv.length>4)p.lv.shift();
- if(!p.nb[ev.i])p.streak=0;
+ if(!p.nb[ev.i])p.streak=0;                           // nota limpia: se corta la racha
 }
 const summary=p=>Object.entries(p.err).filter(([,v])=>v).map(([k,v])=>`${LBL[k]} ${v}`).join(" · ")||"Sin errores";
 /** Reloj de la práctica con tempo: cuenta de entrada, pulso visual/sonoro y notas omitidas. */
@@ -573,14 +662,14 @@ function stop(){
 function clearNote(){hasNote=false;$("hz").textContent="— Hz";$("cents").textContent="— ¢";$("cifra").textContent="—";if(practice){pinfo();setFinger(expM())}else setFinger(null);tgt=0}
 // ---- YIN
 const TH=0.15;
+let yd=new Float32Array(0),ydp=new Float32Array(0);          // buffers reutilizados (no se crean arreglos nuevos en cada cuadro)
 function yin(x,fs){
  const tMin=Math.floor(fs/1900),tMax=Math.ceil(fs/370),W=x.length-tMax-1;
- const d=new Float32Array(tMax+2);
- for(let t=tMin-1;t<=tMax+1;t++){let s=0;for(let j=0;j<W;j++){const v=x[j]-x[j+t];s+=v*v}d[t]=s}
- const dp=new Float32Array(tMax+2);dp[0]=1;let run=0;
- for(let t=1;t<=tMax+1;t++){let s=0;
-  if(t<tMin-1){for(let j=0;j<W;j++){const v=x[j]-x[j+t];s+=v*v};d[t]=s}
-  run+=d[t];dp[t]=d[t]*t/(run||1e-12)}
+ if(yd.length<tMax+2){yd=new Float32Array(tMax+2);ydp=new Float32Array(tMax+2)}
+ const d=yd,dp=ydp;
+ for(let t=1;t<=tMax+1;t++){let s=0;for(let j=0;j<W;j++){const v=x[j]-x[j+t];s+=v*v}d[t]=s}   // función de diferencia
+ dp[0]=1;let acc=0;
+ for(let t=1;t<=tMax+1;t++){acc+=d[t];dp[t]=d[t]*t/(acc||1e-12)}                              // normalización acumulada
  let tau=-1;
  for(let t=tMin;t<=tMax;t++){if(dp[t]<TH){while(t+1<=tMax&&dp[t+1]<dp[t])t++;tau=t;break}}
  if(tau<0)return null;
@@ -593,7 +682,7 @@ function loop(now){
  an.getFloatTimeDomainData(buf);
  let s=0;for(let i=0;i<buf.length;i++)s+=buf[i]*buf[i];
  const db=20*Math.log10(Math.sqrt(s/buf.length)+1e-9);
- lastDb=db;$("lv").style.width=Math.max(0,Math.min(100,(db+70)/70*100))+"%";
+ lastDb=db;{const w=Math.round(Math.max(0,Math.min(100,(db+70)/70*100)))+"%",l=$("lv");if(l._w!==w){l._w=w;l.style.width=w}}
  if(now-calT0<1000){calV.push(db);if(now-calT0>900&&calV.length){calV.sort((a,b)=>a-b);noise=calV[Math.floor(calV.length*.9)]}}
  else if(S==="listen"&&!hasNote&&now-calT0<1100)ui("listen","Toca una nota");
  const cal=now-calT0<1000;
@@ -604,7 +693,7 @@ function loop(now){
   if(!open&&db<lc)noise=noise*0.995+db*0.005;
  }
  let res=null;
- if(!cal&&open)res=yin(buf,ctx.sampleRate);
+ if(!cal&&open&&!previewing)res=yin(buf,ctx.sampleRate);   // durante «escuchar la melodía» no se analiza el micrófono
  if(res&&res.conf>=0.85){
   const m=69+12*Math.log2(res.f/fref());
   if(lastM!=null&&Math.abs(m-lastM)<0.8)cand++;else cand=1;
@@ -613,7 +702,7 @@ function loop(now){
   const med=[...hist].sort((a,b)=>a-b)[hist.length>>1];
   if(ema==null||Math.abs(med-ema)>0.8){ema=med;hist=[m]}else ema=0.35*med+0.65*ema;
   if(cand>=3){lastSeen=now;show(ema)}
- }else{cand=0;if(!open||!res){}}
+ }else cand=0;
  if(hasNote&&now-lastSeen>300){
   if(!(practice&&practice.dead))ui("silence","Sin señal");{const l=evs[evs.length-1];if(l&&!l.done){l.t1=lastSeen;endNote(l)}}if(practice){practice.rel=false;practice.okAt=0;practice.bad=null}
   if(now-lastSeen>1800){clearNote();ema=null;hist=[];ui("listen","Toca una nota")}
@@ -624,7 +713,7 @@ function loop(now){
 let lastShown=null;
 function show(m){
  const mn=Math.round(m),c=100*(m-mn),f=fref()*Math.pow(2,(m-69)/12),pc=((mn%12)+12)%12,oct=Math.floor(mn/12)-1;
- hasNote=true;lastShown=mn;trackNote(mn,c);if(practice&&!practice.timed)judge(mn,c);tgt=Math.max(-50,Math.min(50,c));
+ hasNote=true;lastShown=mn;trackNote(mn,c);if(practice&&practice.mode==="play"&&!practice.timed)judge(mn,c);tgt=Math.max(-50,Math.min(50,c));
  $("cifra").textContent=NAMES[pc]+oct+" · "+SOL[pc]+oct;
  $("hz").textContent=f.toFixed(1)+" Hz";
  $("cents").textContent=(c>=0?"+":"")+Math.round(c)+" ¢";
@@ -635,7 +724,7 @@ function show(m){
  if(practice)pinfo();else setFinger(mn);
 }
 $("go").onclick=()=>run?stop():start();
-document.addEventListener("visibilitychange",()=>{if(!run)return;if(document.hidden)ctx.suspend();else ctx.resume()});
+document.addEventListener("visibilitychange",()=>{if(document.hidden)stopPreview();if(!run)return;if(document.hidden)ctx.suspend();else ctx.resume()});
 setFinger(null);redraw();
 if("serviceWorker"in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>

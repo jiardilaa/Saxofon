@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>QuenaLab</title>
+<title>EWI Lab</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0d2216">
 <link rel="icon" href="icon-192.png">
@@ -57,7 +57,7 @@ button:disabled{opacity:.35}
  <div id="ov"><div class="box" id="ovb"></div></div>
  <div id="cifra">—</div>
  <div id="stage">
-  <div id="fing"><svg viewBox="0 0 100 300" id="quena" aria-label="Digitación de la quena"></svg></div>
+  <div id="fing"><svg viewBox="0 0 100 300" id="quena" aria-label="Digitación del EWI"></svg></div>
   <div id="view">
    <button id="fab" hidden></button>
    <div id="trkw"><canvas id="trk" aria-label="Pista de notas"></canvas></div>
@@ -74,60 +74,35 @@ button:disabled{opacity:.35}
   <div id="status">Listo</div>
   <button id="go">Escuchar</button>
   <div id="lvl"><i id="lv"></i></div>
-  <details id="adv"><summary>⚙ Ajustes</summary><div id="set">A4 <input id="ref" type="number" value="440" min="415" max="466" step="1"> Sens. <select id="sens"><option value="-4">Alta</option><option value="0" selected>Media</option><option value="6">Baja</option></select> ♩= <input id="bpm" type="number" value="80" min="40" max="200"> Trans. <input id="tr" type="number" value="0" min="-24" max="24"> Rigor <select id="rig"><option value="1.5">Suave</option><option value="1" selected>Normal</option><option value="0.7">Estricto</option></select> <label><input id="clk" type="checkbox"> Clic (usa audífonos)</label></div></details>
+  <details id="adv"><summary>⚙ Ajustes</summary><div id="set">Modo <select id="mode"><option value="flute">Flauta</option><option value="sax">Saxofón</option></select> Octava (Do) <select id="oc"><option value="2">C2</option><option value="3">C3</option><option value="4" selected>C4</option><option value="5">C5</option><option value="6">C6</option></select> <button id="cal" type="button">🎚 Calibrar</button> A4 <input id="ref" type="number" value="440" min="415" max="466" step="1"> Sens. <select id="sens"><option value="-4">Alta</option><option value="0" selected>Media</option><option value="6">Baja</option></select> ♩= <input id="bpm" type="number" value="80" min="40" max="200"> Trans. <input id="tr" type="number" value="0" min="-24" max="24"> Rigor <select id="rig"><option value="1.5">Suave</option><option value="1" selected>Normal</option><option value="0.7">Estricto</option></select> <label><input id="clk" type="checkbox"> Clic (usa audífonos)</label></div></details>
  </section>
 </div>
 <script>
-// ===== Digitaciones completas quena en Sol (1.ª, 2.ª y 3.ª Octava) =====
-// midi: [pulgar, h1..h6]  1=cerrado 0=abierto 0.5=medio tapado.
-const FING={
- // --- PRIMERA OCTAVA ---
- 67:[1,1,1,1,1,1,1],   // Sol4
- 68:[1,1,1,1,1,1,0.5], // Sol♯4
- 69:[1,1,1,1,1,1,0],   // La4
- 70:[1,1,1,1,1,0.5,0], // La♯4
- 71:[1,1,1,1,1,0,0],   // Si4
- 72:[1,1,1,1,0,0,0],   // Do5
- 73:[1,1,1,0.5,0,0,0], // Do♯5
- 74:[1,1,1,0,0,0,0],   // Re5
- 75:[1,1,0.5,0,0,0,0], // Re♯5
- 76:[1,1,0,0,0,0,0],   // Mi5
- 77:[1,0.5,0,0,0,0,0], // Fa5
- 78:[1,0,0,0,0,0,0],   // Fa♯5
-
- // --- SEGUNDA OCTAVA ---
- 79:[0,1,1,1,1,1,1],   // Sol5
- 80:[0,1,1,1,1,1,0.5], // Sol♯5
- 81:[0,1,1,1,1,1,0],   // La5
- 82:[0,1,1,1,1,0.5,0], // La♯5
- 83:[0,1,1,1,1,0,0],   // Si5
- 84:[0,1,1,1,0,0,0],   // Do6
- 85:[0,1,1,0.5,0,0,0], // Do♯6
- 86:[0,1,1,0,0,0,0],   // Re6
- 87:[0,1,0.5,0,0,0,0], // Re♯6
- 88:[0,1,0,0,0,0,0],   // Mi6
- 89:[0,0.5,0,0,0,0,0], // Fa6
- 90:[0,0,0,0,0,0,0],   // Fa♯6
-
- // --- TERCERA OCTAVA ---  ⚠ fuera del rango: el detector llega a 1900 Hz y los ejercicios a La6 (HI=93), así que 94–102 no se detectan.
- //     Se conservan como referencia. Por validar: 78 y 100 repiten digitación; 90 y 102 son «todo abierto».
- 91:[1,0,1,1,1,1,1],   // Sol6
- 92:[1,0,1,1,1,1,0.5], // Sol♯6
- 93:[1,0,1,1,1,1,0],   // La6
- 94:[1,0,1,1,1,0.5,0], // La♯6
- 95:[1,0,1,1,1,0,0],   // Si6
- 96:[1,0,1,1,0,0,0],   // Do7
- 97:[1,0,1,0.5,0,0,0], // Do♯7
- 98:[1,0,1,0,0,0,0],   // Re7
- 99:[1,0,0.5,0,0,0,0], // Re♯7
- 100:[1,0,0,0,0,0,0],  // Mi7
- 101:[0,0.5,0,0,0,0,0],// Fa7
- 102:[0,0,0,0,0,0,0]   // Fa♯7
+// ===== EWI MIDI (manual): sensores [Sup.índice, Sup.medio, Sup.anular, botón♯ sup, botón♭, Inf.índice, Inf.medio, Inf.anular, botón♯ inf, botón Do1], 1 = presionado.
+// Clave = semitonos sobre el Do de la octava elegida. Los «tonos» del aparato (timbres) no cambian las notas.
+const MODES={
+flute:{"-5":"1110011100","-3":"1110011000","-1":"1110010000",0:"1110000000",2:"1100000000",4:"1000000000",5:"0100000000"},
+sax:{0:"1110011101",2:"1110011100",3:"1110011110",4:"1110011000",5:"1110010000",6:"1110001000",7:"1110000000",8:"1100010000",9:"1100000000",10:"1010000000",11:"1000000000",12:"0100000000",13:"0000000000"}
 };
-
+const DEV={get mode(){return $("mode").value},get oct(){return +$("oc").value}};
+const base=()=>12*(DEV.oct+1); // Do de la octava elegida (C4 = Do central = 60)
+let LO=0,HI=0,FREE_LANES=[],SCALES,calibrating=false;
+const FMIN=()=>Math.max(60,440*2**((LO-69)/12)*.85);
+function applyDev(){
+const k=Object.keys(MODES[DEV.mode]).map(Number).sort((a,b)=>a-b);
+LO=base()+k[0];HI=base()+k[k.length-1];FREE_LANES=k.map(x=>base()+x);SCALES=DEV.mode==="flute"?SC_FL:SC_SAX;
+}
 function fingerFor(m){
- if(FING[m])return{f:FING[m],note:""};
- return{f:null,note:"Sin digitación en tabla"};
+const v=MODES[DEV.mode][m-base()];
+return v?{f:[...v].map(Number),note:""}:{f:null,note:"Sin digitación en tabla"};
+}
+/** Calibrar: la nota más grave del modo (Sol en flauta, Do en saxofón) fija la octava. */
+function calib(mn){
+if(!calibrating)return;const fl=DEV.mode==="flute";
+if(((mn%12)+12)%12!==(fl?7:0))return;
+const oc=Math.floor((mn+(fl?5:0))/12)-1;if(oc<2||oc>6)return;
+$("oc").value=oc;store.put({...store.get(),oc:String(oc)});applyDev();calibrating=false;
+fb("✔ Octava calibrada: Do"+oc,"var(--ok)",3000);
 }
 const NS="http://www.w3.org/2000/svg",$=id=>document.getElementById(id);
 const el=(p,t,a,txt)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;p.appendChild(e);return e};
@@ -136,7 +111,7 @@ const LET=[0,0,1,1,2,3,3,4,4,5,5,6],ACC=[0,1,0,1,0,0,1,0,1,0,1,0];
 // ---- Ajustes persistentes (localStorage con protección: en modo privado puede no estar disponible)
 const store={get(){try{return JSON.parse(localStorage.getItem("quenalab.set")||"{}")}catch(e){return{}}},put(o){try{localStorage.setItem("quenalab.set",JSON.stringify(o))}catch(e){}}};
 const txt=(e,t)=>{if(e._t!==t){e._t=t;e.textContent=t}};       // escribe en el DOM solo si el texto cambió
-["ref","sens","bpm","tr","rig","clk"].forEach(id=>{
+["ref","sens","bpm","tr","rig","clk","mode","oc"].forEach(id=>{
  const e=$(id),chk=e.type==="checkbox",sv=store.get();
  if(id in sv){if(chk)e.checked=!!sv[id];else e.value=sv[id]}
  e.addEventListener("change",()=>store.put({...store.get(),[id]:chk?e.checked:e.value}));
@@ -149,10 +124,9 @@ el(q,"rect",{x:31,y:10,width:42,height:34,rx:12,fill:"#FFF4DC",stroke:"#5a3516",
 el(q,"path",{d:"M41 20 L52 40 L63 20 Z",fill:"#3a2412"});
 el(q,"rect",{x:31,y:262,width:42,height:16,rx:6,fill:"#FFF4DC",stroke:"#5a3516","stroke-width":1.5});
 const holes=[];
-for(let i=0;i<7;i++){
- const th=i===0,cx=th?14:52,cy=th?100:72+(i-1)*31;
- holes.push(el(q,"circle",{cx,cy,r:th?8:9.5,fill:"#fff",stroke:"#3a2412","stroke-width":1.6}));
-}
+[[62],[86],[110],[128,1],[139,1],[162],[186],[210],[228,1],[239,1]].forEach(([cy,sm])=>holes.push(sm
+?el(q,"rect",{x:43,y:cy-4,width:18,height:8,rx:4,fill:"#fff",stroke:"#3a2412","stroke-width":1.3})
+:el(q,"circle",{cx:52,cy,r:8,fill:"#fff",stroke:"#3a2412","stroke-width":1.6})));
 const fnote=el(q,"text",{x:50,y:298,fill:"#F5F7FA","font-size":7.5,"text-anchor":"middle"},"");
 const HOLE={1:"#2B1B10",.5:"#A89A8C",0:"#FFFFFF"};
 function setFinger(m){
@@ -202,7 +176,7 @@ function drawPractice(){
 }
 // ---- Pista tipo «ritmo»: burbujas que bajan en perspectiva hacia una fila de botones
 const cv=$("trk"),g2=cv.getContext("2d"),SFAR=.4,LOOK=6,TRAIL=3;   // SFAR: escala en el horizonte · LOOK: pulsos visibles · TRAIL: s de historial
-const FREE_LANES=[67,69,71,72,74,76,78,79,81,83];                    // modo libre: Sol mayor, Sol4…Si5
+// FREE_LANES se calcula en applyDev()
 const hue=m=>((m%12)*30+330)%360,staffOn=()=>!$("top").hidden;
 let cw=0,ch=0;
 new ResizeObserver(()=>{const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;cw=r.width;ch=r.height;
@@ -349,10 +323,10 @@ $("file").onchange=async e=>{
  e.target.value="";openList(msg.join(" · "));
 };
 // ---- Ejercicios parametrizables: el usuario elige tónica y escala (y octava en el ejercicio 2)
-const SCALES={"Mayor":[0,2,4,5,7,9,11],"Menor natural":[0,2,3,5,7,8,10],"Pentatónica menor":[0,3,5,7,10],"Pentatónica mayor":[0,2,4,7,9]};
+const SC_FL={"Sol–Fa":[0,2,4,5,7,9,10]};const SC_SAX={"Mayor":[0,2,4,5,7,9,11],"Menor natural":[0,2,3,5,7,8,10],"Pentatónica menor":[0,3,5,7,10],"Pentatónica mayor":[0,2,4,7,9]};
 const ROOTS=["Do","Do♯","Re","Re♯","Mi","Fa","Fa♯","Sol","Sol♯","La","La♯","Si"];
-const IV=SCALES.Mayor,LO=67,HI=93;                       // rango de la quena en Sol: G4 (67) a A6 (93)
-const lowest=pc=>{let m=60+pc;while(m<LO)m+=12;return m};  // tónica más grave que cabe en la quena
+const IV=[0,2,4,5,7,9,11];const rootOpts=()=>ROOTS.map((r,i)=>[i,r]).filter(([i])=>DEV.mode==="sax"?i<=5:i===7); // flauta: solo Sol
+const lowest=pc=>{let m=24+pc;while(m<LO)m+=12;return m};  // tónica más grave que cabe en la quena
 const degTo=(root,sc)=>d=>root+12*Math.floor(d/sc.length)+sc[((d%sc.length)+sc.length)%sc.length];
 const nmS=m=>SOL[((m%12)+12)%12]+(Math.floor(m/12)-1);
 const P=(a,d=1)=>a.map(x=>[x,d]);
@@ -366,13 +340,13 @@ const EX=[
 {n:"6. Control del volumen",i:"Mantén la nota: suave, aumenta, vuelve a disminuir, sin perder la afinación (vigila los cents). Trabaja: control del aire y expresividad.",hold:8000,plan:L=>P([0,2,4],4)},
 {n:"7. Saltos de notas",i:"Tónica–tercera–quinta–tercera–tónica y luego desde la segunda. Trabaja: precisión en los cambios de digitación.",bpm:50,plan:L=>P([0,2,4,2,0,1,3,5,3,1])},
 {n:"8. Ritmos con negras y corcheas",i:"Alterna notas de un pulso con dos notas por pulso, con metrónomo. Trabaja: subdivisión y coordinación.",bpm:60,plan:L=>seq(L).map((d,i)=>[d,[1,.5,.5][i%3]])},
-{n:"9. Cambio entre registros",i:"Nota grave y su correspondiente aguda (una octava arriba), sin apretar los labios. Trabaja: embocadura y columna de aire.",bpm:50,plan:L=>P([0,L,1,L+1,2,L+2,3,L+3])},
+{n:"9. Saltos amplios",i:"Alterna notas graves y agudas del rango (primera con última, segunda con penúltima…). Trabaja: columna de aire y coordinación de dedos.",bpm:50,plan:L=>P([0,L,1,L-1,2,L-2,3,L-3])},
 {n:"10. Escala en grupos de tres",i:"Grupos de tres subiendo y luego descendiendo. Trabaja: agilidad, memoria motora y fluidez.",bpm:60,plan:L=>{const g=[];for(let i=0;i<L-1;i++)g.push(i,i+1,i+2);for(let i=L;i>=2;i--)g.push(i,i-1,i-2);return P(g)}}
 ];
 /** Genera las notas de un ejercicio. oct=null → tónica más grave posible. Devuelve {notes, ok} (ok: cabe en G4–A6). */
 function build(x,pc,sn,oct){
  const sc=SCALES[sn],root=oct==null?lowest(pc):12*(oct+1)+pc,f=degTo(root,sc);
- const notes=x.plan(sc.length).map(([d,t])=>({m:f(d),d:t})),ms=notes.map(n=>n.m);
+ const notes=x.plan(sc.length-(DEV.mode==="flute"?1:0)).map(([d,t])=>({m:f(d),d:t})),ms=notes.map(n=>n.m);
  return{notes,ok:Math.min(...ms)>=LO&&Math.max(...ms)<=HI,lo:Math.min(...ms),hi:Math.max(...ms)};
 }
 // ---- Escuchar la melodía (síntesis con Web Audio: seno + 2.º armónico, timbre suave de flauta)
@@ -419,8 +393,9 @@ function cfgPractice(x){
  const field=(lab,c)=>{const l=document.createElement("label");l.className="cf";l.append(lab,c);b.append(l);return c};
  const sel=(opts,v)=>{const c=document.createElement("select");opts.forEach(([k,tx])=>c.add(new Option(tx,k)));c.value=v;return c};
  const btn=tx=>{const e=document.createElement("button");e.textContent=tx;e.style.margin="10px 8px 0 0";return e};
- const root=isEx?field("Nota (tónica): ",sel(ROOTS.map((r,i)=>[i,r]),CFG.pc)):null;
- const scale=isEx?field("Escala: ",sel(Object.keys(SCALES).map(k=>[k,k]),CFG.sn)):null;
+ const pcs=rootOpts(),pc0=pcs.some(([k])=>k===CFG.pc)?CFG.pc:pcs[0][0],sn0=SCALES[CFG.sn]?CFG.sn:Object.keys(SCALES)[0];
+const root=isEx?field("Nota (tónica): ",sel(pcs,pc0)):null;
+ const scale=isEx?field("Escala: ",sel(Object.keys(SCALES).map(k=>[k,k]),sn0)):null;
  const octs=x.oct?field("Octava de la tónica: ",sel([],"")):null;
  const tempo=x.hold?null:field("Tempo (♩=): ",Object.assign(document.createElement("input"),{type:"number",min:30,max:160,value:x.bpm||80}));
  const info=document.createElement("div"),go=btn("✔ Cargar práctica"),back=btn("Atrás");
@@ -429,12 +404,12 @@ function cfgPractice(x){
  const upd=()=>{
   if(isEx){
    const pc=+root.value,sn=scale.value;
-   if(octs){const ok=[4,5,6].filter(o=>build(x,pc,sn,o).ok),keep=octs.value;octs.innerHTML="";ok.forEach(o=>octs.add(new Option(o,o)));if(ok.map(String).includes(keep))octs.value=keep;else if(ok.includes(CFG.oct))octs.value=CFG.oct}
+   if(octs){const ok=[2,3,4,5,6,7].filter(o=>build(x,pc,sn,o).ok),keep=octs.value;octs.innerHTML="";ok.forEach(o=>octs.add(new Option(o,o)));if(ok.map(String).includes(keep))octs.value=keep;else if(ok.includes(CFG.oct))octs.value=CFG.oct}
    const oc=octs?(octs.value===""?undefined:+octs.value):null;
    cur=oc===undefined?{ok:false}:build(x,pc,sn,oc);
-  }else{const ms=x.notes.filter(n=>n.m!=null).map(n=>n.m);cur={notes:x.notes,ok:true,lo:Math.min(...ms),hi:Math.max(...ms)}}
+  }else{const ms=x.notes.filter(n=>n.m!=null).map(n=>n.m);const t0=+$("tr").value||0;cur={notes:x.notes,ok:Math.min(...ms)+t0>=LO&&Math.max(...ms)+t0<=HI,lo:Math.min(...ms),hi:Math.max(...ms)}}
   go.disabled=!cur.ok;
-  info.textContent=cur.ok?`Notas de ${nmS(cur.lo)} a ${nmS(cur.hi)}. Después usa el botón «Escuchar / Practicar» sobre la pista.`:"Esa combinación sale del rango de la quena (Sol4–La6). Elige otra nota u octava.";
+  info.textContent=cur.ok?`Notas de ${nmS(cur.lo)} a ${nmS(cur.hi)}. Después usa el botón «Escuchar / Practicar» sobre la pista.`:`Fuera del rango del EWI (${nmS(LO)}–${nmS(HI)}). Elige otra nota u octava, o ajusta «Trans.».`;
   info.style.color=cur.ok?"":"var(--bad)";
  };
  [root,scale,octs].forEach(c=>c&&c.addEventListener("change",upd));upd();
@@ -444,14 +419,13 @@ function cfgPractice(x){
    :x.native?{...x,bpm:+tempo.value||x.bpm}:{name:x.name,notes:x.notes,bpm:+tempo.value||80});
  };
 }
-// Feliz cumpleaños (3/4) en tonalidad de Sol, empieza en Re5: todas las notas tienen digitación en la tabla
-const HB=[[74,.75],[74,.25],[76,1],[74,1],[79,1],[78,3],[74,.75],[74,.25],[76,1],[74,1],[81,1],[79,3],[74,.75],[74,.25],[86,1],[83,1],[79,1],[78,1],[76,1],[84,.75],[84,.25],[83,1],[79,1],[81,1],[79,3]].map(([m,d])=>({m,d}));
 const SD=(t,str)=>str.split(" ").map(x=>{const[a,b]=x.split(":"),d=+a;return{m:t+12*Math.floor(d/7)+IV[((d%7)+7)%7],d:b?+b:1}});
+const SR=()=>base()-(DEV.mode==="flute"?5:0); // tónica de las canciones: Sol (flauta) o Do (saxofón)
 const SONGS=[
-{n:"🎵 Feliz cumpleaños (quena en Sol)",i:"Tonalidad de Sol, compás de 3/4. Empieza en Re5; usa el segundo registro (Re6 en «cumpleaños feliz»).",notes:HB,bar:3,pick:1},
-{n:"🎵 Himno a la alegría (Beethoven)",i:"Principiante. Escrita en Re mayor para que quepa en la quena: de La4 a La5.",notes:SD(74,"2 2 3 4 4 3 2 1 0 0 1 2 2:1.5 1:.5 1:2 2 2 3 4 4 3 2 1 0 0 1 2 1:1.5 0:.5 0:2 1 1 2 0 1 2:.5 3:.5 2 0 1 2:.5 3:.5 2 1 0 1 -3:2 2 2 3 4 4 3 2 1 0 0 1 2 1:1.5 0:.5 0:2")},
-{n:"🎵 Estrellita (Brilla, brilla)",i:"Principiante. Solo 6 notas (Sol4 a Mi5): ideal para limpiar saltos de quinta.",notes:SD(67,"0 0 4 4 5 5 4:2 3 3 2 2 1 1 0:2 4 4 3 3 2 2 1:2 4 4 3 3 2 2 1:2 0 0 4 4 5 5 4:2 3 3 2 2 1 1 0:2")},
-{n:"🎵 Mary tenía un corderito",i:"Principiante. Solo 5 notas (Sol4 a Re5); la usan quenistas de quena en Sol para sus primeras melodías.",notes:SD(67,"2 1 0 1 2 2 2:2 1 1 1:2 2 4 4:2 2 1 0 1 2 2 2 2 1 1 2 1 0:4")}
+{n:"🎵 Himno a la alegría (Beethoven)",i:"Principiante. Primeras dos frases, de la tónica a la quinta.",get notes(){return SD(SR(),"2 2 3 4 4 3 2 1 0 0 1 2 2:1.5 1:.5 1:2 2 2 3 4 4 3 2 1 0 0 1 2 1:1.5 0:.5 0:2")}},
+{n:"🎵 Estrellita (Brilla, brilla)",i:"Principiante. Solo 6 notas: ideal para limpiar saltos de quinta.",get notes(){return SD(SR(),"0 0 4 4 5 5 4:2 3 3 2 2 1 1 0:2 4 4 3 3 2 2 1:2 4 4 3 3 2 2 1:2 0 0 4 4 5 5 4:2 3 3 2 2 1 1 0:2")}},
+{n:"🎵 Mary tenía un corderito",i:"Principiante. Solo 5 notas.",get notes(){return SD(SR(),"2 1 0 1 2 2 2:2 1 1 1:2 2 4 4:2 2 1 0 1 2 2 2 2 1 1 2 1 0:4")}},
+{n:"🎵 Hermano Santiago (Frère Jacques)",i:"Principiante. Notas repetidas para practicar los cambios de dedos.",get notes(){return SD(SR(),"0 1 2 0 0 1 2 0 2 3 4:2 2 3 4:2 4:.5 5:.5 4:.5 3:.5 2 0 4:.5 5:.5 4:.5 3:.5 2 0 0 4 0:2 0 4 0:2")}}
 ];
 SONGS.forEach(x=>Object.assign(x,{native:true,bpm:x.bpm||70,bar:x.bar||4,pick:x.pick||0}));   // cada canción puede traer su propio bpm, bar (compás) y pick (anacrusa)
 async function openList(note){
@@ -642,7 +616,7 @@ async function start(){
   await ctx.resume();
   const src=ctx.createMediaStreamSource(stream);
   const hp1=ctx.createBiquadFilter(),hp2=ctx.createBiquadFilter(),lp=ctx.createBiquadFilter();
-  hp1.type=hp2.type="highpass";hp1.frequency.value=hp2.frequency.value=330;lp.type="lowpass";lp.frequency.value=2500;
+  hp1.type=hp2.type="highpass";hp1.frequency.value=hp2.frequency.value=Math.max(50,FMIN()*.8);lp.type="lowpass";lp.frequency.value=2500;
   an=ctx.createAnalyser();an.fftSize=2048;an.smoothingTimeConstant=0;buf=new Float32Array(an.fftSize);
   src.connect(hp1);hp1.connect(hp2);hp2.connect(lp);lp.connect(an);
   ctx.onstatechange=()=>{if(run&&ctx.state!=="running"&&ctx.state!=="closed")ctx.resume().catch(()=>{})};
@@ -664,7 +638,7 @@ function clearNote(){hasNote=false;$("hz").textContent="— Hz";$("cents").textC
 const TH=0.15;
 let yd=new Float32Array(0),ydp=new Float32Array(0);          // buffers reutilizados (no se crean arreglos nuevos en cada cuadro)
 function yin(x,fs){
- const tMin=Math.floor(fs/1900),tMax=Math.ceil(fs/370),W=x.length-tMax-1;
+ const tMin=Math.floor(fs/1900),tMax=Math.ceil(fs/FMIN()),W=x.length-tMax-1;
  if(yd.length<tMax+2){yd=new Float32Array(tMax+2);ydp=new Float32Array(tMax+2)}
  const d=yd,dp=ydp;
  for(let t=1;t<=tMax+1;t++){let s=0;for(let j=0;j<W;j++){const v=x[j]-x[j+t];s+=v*v}d[t]=s}   // función de diferencia
@@ -713,7 +687,7 @@ function loop(now){
 let lastShown=null;
 function show(m){
  const mn=Math.round(m),c=100*(m-mn),f=fref()*Math.pow(2,(m-69)/12),pc=((mn%12)+12)%12,oct=Math.floor(mn/12)-1;
- hasNote=true;lastShown=mn;trackNote(mn,c);if(practice&&practice.mode==="play"&&!practice.timed)judge(mn,c);tgt=Math.max(-50,Math.min(50,c));
+ calib(mn);hasNote=true;lastShown=mn;trackNote(mn,c);if(practice&&practice.mode==="play"&&!practice.timed)judge(mn,c);tgt=Math.max(-50,Math.min(50,c));
  $("cifra").textContent=NAMES[pc]+oct+" · "+SOL[pc]+oct;
  $("hz").textContent=f.toFixed(1)+" Hz";
  $("cents").textContent=(c>=0?"+":"")+Math.round(c)+" ¢";
@@ -725,6 +699,9 @@ function show(m){
 }
 $("go").onclick=()=>run?stop():start();
 document.addEventListener("visibilitychange",()=>{if(document.hidden)stopPreview();if(!run)return;if(document.hidden)ctx.suspend();else ctx.resume()});
+applyDev();
+$("cal").onclick=async()=>{if(!run)await start();calibrating=true;fb(DEV.mode==="flute"?"🎚 Toca el Sol grave: tapa los 6 sensores":"🎚 Toca el Do grave: 6 sensores + botón Do1","var(--ac)",0)};
+["mode","oc"].forEach(id=>$(id).addEventListener("change",()=>{calibrating=false;applyDev();if(practice)exitPractice();setFinger(null);if(run){stop();setTimeout(start,300)}else redraw()}));
 setFinger(null);redraw();
 if("serviceWorker"in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>

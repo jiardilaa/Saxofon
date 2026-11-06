@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>EWI Lab</title>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#0d2216">
+<meta name="theme-color" content="#0b1d2a">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
@@ -109,7 +109,7 @@ const el=(p,t,a,txt)=>{const e=document.createElementNS(NS,t);for(const k in a)e
 const NAMES=["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"],SOL=["Do","Do♯","Re","Re♯","Mi","Fa","Fa♯","Sol","Sol♯","La","La♯","Si"];
 const LET=[0,0,1,1,2,3,3,4,4,5,5,6],ACC=[0,1,0,1,0,0,1,0,1,0,1,0];
 // ---- Ajustes persistentes (localStorage con protección: en modo privado puede no estar disponible)
-const store={get(){try{return JSON.parse(localStorage.getItem("quenalab.set")||"{}")}catch(e){return{}}},put(o){try{localStorage.setItem("quenalab.set",JSON.stringify(o))}catch(e){}}};
+const store={get(){try{return JSON.parse(localStorage.getItem("ewilab.set")||"{}")}catch(e){return{}}},put(o){try{localStorage.setItem("ewilab.set",JSON.stringify(o))}catch(e){}}};
 const txt=(e,t)=>{if(e._t!==t){e._t=t;e.textContent=t}};       // escribe en el DOM solo si el texto cambió
 ["ref","sens","bpm","tr","rig","clk","mode","oc"].forEach(id=>{
  const e=$(id),chk=e.type==="checkbox",sv=store.get();
@@ -270,7 +270,7 @@ function drawPanel(){
 function redraw(now=performance.now()){octInfo();if(staffOn())drawRoll(now);else drawTrack(now);drawPanel()}
 $("vw").onclick=()=>{const s=!staffOn();$("top").hidden=!s;$("trkw").hidden=s;$("vw").textContent=s?"🎮 Pista":"🎼 Pentagrama";redraw()};
 // ---- Partituras (IndexedDB)
-const DB=new Promise((ok,ko)=>{const r=indexedDB.open("quenalab",1);r.onupgradeneeded=()=>r.result.createObjectStore("s",{keyPath:"id"});r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error)});
+const DB=new Promise((ok,ko)=>{const r=indexedDB.open("ewilab",1);r.onupgradeneeded=()=>r.result.createObjectStore("s",{keyPath:"id"});r.onsuccess=()=>ok(r.result);r.onerror=()=>ko(r.error)});
 const tx=async(mode,f)=>{const db=await DB;return new Promise((ok,ko)=>{const t=db.transaction("s",mode),r=f(t.objectStore("s"));t.oncomplete=()=>ok(r.result);t.onerror=()=>ko(t.error)})};
 const all=()=>tx("readonly",s=>s.getAll()).catch(()=>[]),put=o=>tx("readwrite",s=>s.put(o)),del=id=>tx("readwrite",s=>s.delete(id));
 async function mxlToXml(f){

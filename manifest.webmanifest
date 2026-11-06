@@ -1,7 +1,7 @@
 {
-  "name": "QuenaLab",
-  "short_name": "QuenaLab",
-  "description": "Afinador y asistente de práctica para quena",
+  "name": "EWI Lab",
+  "short_name": "EWI Lab",
+  "description": "Afinador y asistente de práctica para EWI MIDI",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
